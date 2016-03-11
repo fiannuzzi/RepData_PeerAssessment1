@@ -5,21 +5,208 @@ output:
     keep_md: true
 ---
 
+I analyse a dataset containing the number of steps taken by a single individual over a period of time. Each day is split into a sequence of 5-minute intervals and the total number of steps performed in each of these intervals is recorded. For some intervals the data is not available. The goal of the analysis is to see the daily trend, the differences between working days and weekends and the overall distribution of the total number of steps taken per day.
+
+Below is the description of the data anlysis and the code used to perform it. 
 
 ## Loading and preprocessing the data
 
+I first load the raw data in.
 
+```{r, echo=TRUE, eval=TRUE, message=FALSE, warning=FALSE}
+setwd("~/Coursera/DataScience/Repr_Research/RepData_PeerAssessment1")
+infile <- "activity.csv"
+indata <- read.csv(infile, sep= ",", header=TRUE)
+print(head(indata))
+```
+
+I will use the dplyr library to easily manipulate the raw data. I apply the tbl_df() function to restrict the number of rows that will be printed to the screen.
+
+```{r, echo=TRUE, eval=TRUE, message=FALSE, warning=FALSE}
+library(dplyr)
+indata_converted <- tbl_df(indata)
+```
 
 ## What is mean total number of steps taken per day?
+I use the dplyr's functions group_by() and summarise() to sum all steps taken each day. I then take the mean and median by ignoring NA values.
+```{r, echo=TRUE, eval=TRUE, message=FALSE, warning=FALSE}
+group_by_date <- group_by(indata_converted, date)
+tot_steps_day <- summarise(group_by_date, sum(steps))
+mean_daily_steps <- mean(tot_steps_day$`sum(steps)`, na.rm=TRUE)
+median_daily_steps <- median(tot_steps_day$`sum(steps)`, na.rm=TRUE)
+```
+Here are the values:
+```{r, echo=TRUE, eval=TRUE, message=FALSE, warning=FALSE}
+print(mean_daily_steps)
+print(median_daily_steps)
+```
 
-
+I now plot the overall distribution in the form of an histogram. This gives an idea of how often the person has walked a given number of steps.
+```{r, echo=TRUE, eval=TRUE, message=FALSE, warning=FALSE}
+library(ggplot2)
+ggplot(data=tot_steps_day, aes(`sum(steps)`, na.rm=TRUE)) + 
+  geom_histogram(breaks=seq(min(tot_steps_day$`sum(steps)`, na.rm = TRUE),max(tot_steps_day$`sum(steps)`, na.rm=TRUE), by=500),
+                 fill = 'light blue',
+                 col = 'blue') +
+  labs(title = 'Distribution of the total number of daily steps',
+       x = "Total number of daily steps",
+       y = "Number of days") 
+ggsave("histogram_no_nas.pdf")
+```
+The plot shows that the distribution is not too distant from a gaussian, which was already hinted at by the fact that the mean and median values are very similar.
 
 ## What is the average daily activity pattern?
+```{r, echo=FALSE, eval=FALSE, message=FALSE, warning=FALSE}
+# Not what was asked, but still interesting date manipulation
+library(lubridate)
+date_time <- ymd(indata$date) + dminutes(indata$interval)
+head(date_time)
 
+indata_mut <- mutate(indata, datetime = date_time)
+head(indata_mut)
+```
 
+I now group the original data by time interval, instead of by date as done above. I then compute the mean value of the steps walked during each time interval across all days recorded. I am ignoring NA values for now.
+```{r, echo=TRUE, eval=TRUE, message=FALSE, warning=FALSE}
+group_by_interval <- group_by(indata_converted, interval)
+mean_steps_interval <- summarise(group_by_interval, mean_steps_int = mean(steps, na.rm=TRUE))
+```
+
+I now convert the time interval to an actual time, i.e. something in the format HH:MM. I add this new value in a new "time" column.
+
+```{r, echo=TRUE, eval=TRUE, message=FALSE, warning=FALSE}
+hour <- mean_steps_interval$interval %/% 60
+minute <- mean_steps_interval$interval %% 60
+
+mean_steps_interval$time <- 0
+for (i in 1:nrow(mean_steps_interval)) {
+  
+  mean_steps_interval$time[i] <- paste(toString(hour[i]), toString(minute[i]), sep=":")
+  
+}
+ mean_steps_interval$time <- as.POSIXct(mean_steps_interval$time, format="%H:%M")
+head(mean_steps_interval)
+```
+
+I now plot the average number of steps walked per time interval during a day.
+
+```{r, echo=TRUE, eval=TRUE, message=FALSE, warning=FALSE}
+library(scales)
+
+ggplot(data=mean_steps_interval, aes(time, mean_steps_int, na.rm=TRUE)) + 
+  geom_line(col="orange",
+            size=1.2) +
+  scale_x_datetime(breaks=("2 hour"), labels=date_format("%H:%M")) +
+  labs(title = 'Average daily activity',
+       y = "Average number of steps",
+       x = "Time") 
+ggsave("daily_activity.pdf")
+```
+
+There is a clear peak around 14:00. Below I evaluate the time interval this corresponds to.
+
+```{r, echo=TRUE, eval=TRUE, message=FALSE, warning=FALSE}
+max_steps <- max(mean_steps_interval$mean_steps_int)
+max_steps_ind <- which.max(mean_steps_interval$mean_steps_int)
+time_max_steps <- mean_steps_interval$interval[max_steps_ind]
+print(time_max_steps)
+```
 
 ## Imputing missing values
+This is the number of NA values in the original data:
 
+```{r, echo=TRUE, eval=TRUE, message=FALSE, warning=FALSE}
+tot_na_values <- sum(is.na(indata$steps)) 
+print(tot_na_values)
+```
+
+
+I create a new dataframe by copying the original *date* and *interval* columns and by filling the new *steps* column with zeros. I then fill the latter with the original values, when they are available; as for NAs, I replace them with the mean over the given time interval.
+```{r, echo=TRUE, eval=TRUE, message=FALSE, warning=FALSE}
+new_indata <- data.frame(date = indata$date, interval = indata$interval, steps = 0)
+
+for (i in 1:nrow(indata)){
+  
+  if (is.na(indata$steps[i])) {
+    interval <- indata$interval[i]
+    newval_ind <- which(mean_steps_interval$interval == interval)
+    newval <- mean_steps_interval$mean_steps_int[newval_ind]
+    new_indata$steps[i] <- newval
+  } else {
+    new_indata$steps[i] <- indata$steps[i]
+  }
+  
+}
+
+print(head(new_indata))
+```
+
+I then replicate the same analysis as above to compute mean and median of the total number of daily steps.
+```{r, echo=TRUE, eval=TRUE, message=FALSE, warning=FALSE}
+new_indata_converted <- tbl_df(new_indata)
+new_group_by_date <- group_by(new_indata_converted, date)
+new_tot_steps_day <- summarise(new_group_by_date, sum(steps))
+new_mean_daily_steps <- mean(new_tot_steps_day$`sum(steps)`)
+new_median_daily_steps <- median(new_tot_steps_day$`sum(steps)`)
+print(new_mean_daily_steps)
+print(new_median_daily_steps)
+```
+
+They do not change dramatically. This is confirmed by the plot below, showing the new histogram (in green), plotted together with the previous one (in blue). This is not surprising as the treatment for NAs has strenghtened the mean behaviour.
+
+```{r, echo=TRUE, eval=TRUE, message=FALSE, warning=FALSE}
+ggplot(data=new_tot_steps_day, aes(`sum(steps)`)) + 
+  geom_histogram(breaks=seq(min(new_tot_steps_day$`sum(steps)`),max(new_tot_steps_day$`sum(steps)`), by=500),
+                 fill = 'light green',
+                 col = 'green') + 
+  geom_histogram(data = tot_steps_day, breaks=seq(min(tot_steps_day$`sum(steps)`, na.rm = TRUE),max(tot_steps_day$`sum(steps)`, na.rm=TRUE), by=500),
+                 fill = 'blue',
+                 alpha = 0.4) +
+  labs(title = 'Distribution of the total number of daily steps',
+       x = "Total number of daily steps",
+       y = "Number of days") 
+ggsave("histogram_subs_nas.pdf")
+```
 
 
 ## Are there differences in activity patterns between weekdays and weekends?
+I am using the lubridate function wday() to associate the weekday to each date. I am also labelling each of the days as "Work" or "Weekend". I am adding both labels as two new colums.
+```{r, echo=TRUE, eval=TRUE, message=FALSE, warning=FALSE}
+library(lubridate)
+new_indata_converted$date <- as.Date(new_indata_converted$date)
+new_indata_converted$weekday <- wday(new_indata_converted$date, label = TRUE)
+
+new_indata_converted$work_or_we <- " "
+
+for (i in 1:nrow(new_indata_converted)){
+  if(new_indata_converted$weekday[i] != "Sat" & new_indata_converted$weekday[i] != "Sun"){
+    new_indata_converted$work_or_we[i] <- "Work"
+  } else {
+    new_indata_converted$work_or_we[i] <- "Weekend"
+  }
+}
+
+new_indata_converted$work_or_we <- as.factor(new_indata_converted$work_or_we)
+
+head(new_indata_converted)
+```
+
+I am now grouping the data by time interval and by the Work/Weekend factor.
+```{r, echo=TRUE, eval=TRUE, message=FALSE, warning=FALSE}
+new_group_by_interval <- group_by(new_indata_converted, interval, work_or_we)
+new_mean_steps_interval <- summarise(new_group_by_interval, mean_steps_int = mean(steps))
+```
+
+Below is the same plot of the daily activity, just split by the Work/Weekend factor and with the replaced NA values.
+```{r, echo=TRUE, eval=TRUE, message=FALSE, warning=FALSE}
+ggplot(data=new_mean_steps_interval, aes(interval, mean_steps_int)) + 
+  geom_line(col="orange",
+            size=1.2) +
+  facet_grid(work_or_we ~ .)+
+  labs(title = 'Average daily activity',
+       y = "Average number of steps",
+       x = "Time intervals") 
+ggsave("daily_activity_work_we_subs_nas.pdf")
+```
+## Conclusions
+The distribution of total daily steps is approximately gaussian, with the peak close to 1100. During weekdays there is a clear peak of steps walked around 14:00, whereas during the weekend the activity is more evenly spread during the day. About 10% of the data is missing and has either been ignored or substituted by the average behaviour in the corresponding time interval. No particular remarks, except the arbitrariness in dealing with missing data.
