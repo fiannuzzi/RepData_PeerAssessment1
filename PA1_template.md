@@ -39,9 +39,11 @@ I use the dplyr's functions group_by() and summarise() to sum all steps taken ea
 
 ```r
 group_by_date <- group_by(indata_converted, date)
-tot_steps_day <- summarise(group_by_date, sum(steps))
-mean_daily_steps <- mean(tot_steps_day$`sum(steps)`, na.rm=TRUE)
-median_daily_steps <- median(tot_steps_day$`sum(steps)`, na.rm=TRUE)
+tot_steps_day <- summarise(group_by_date, sum = sum(steps, na.rm=TRUE))
+#mean_daily_steps <- mean(tot_steps_day$`sum(steps)`, na.rm=TRUE)
+#median_daily_steps <- median(tot_steps_day$`sum(steps)`, na.rm=TRUE)
+mean_daily_steps <- mean(tot_steps_day$sum, na.rm=TRUE)
+median_daily_steps <- median(tot_steps_day$sum, na.rm=TRUE)
 ```
 Here are the values:
 
@@ -50,7 +52,7 @@ print(mean_daily_steps)
 ```
 
 ```
-## [1] 10766.19
+## [1] 9354.23
 ```
 
 ```r
@@ -58,15 +60,15 @@ print(median_daily_steps)
 ```
 
 ```
-## [1] 10765
+## [1] 10395
 ```
 
 I now plot the overall distribution in the form of an histogram. This gives an idea of how often the person has walked a given number of steps.
 
 ```r
 library(ggplot2)
-ggplot(data=tot_steps_day, aes(`sum(steps)`, na.rm=TRUE)) + 
-  geom_histogram(breaks=seq(min(tot_steps_day$`sum(steps)`, na.rm = TRUE),max(tot_steps_day$`sum(steps)`, na.rm=TRUE), by=500),
+ggplot(data=tot_steps_day, aes(sum, na.rm=TRUE)) + 
+  geom_histogram(breaks=seq(min(tot_steps_day$sum, na.rm = TRUE),max(tot_steps_day$sum, na.rm=TRUE), by=500),
                  fill = 'light blue',
                  col = 'blue') +
   labs(title = 'Distribution of the total number of daily steps',
@@ -112,12 +114,12 @@ head(mean_steps_interval)
 ## Source: local data frame [6 x 3]
 ## 
 ##   interval mean_steps_int                time
-## 1        0      1.7169811 2016-03-11 00:00:00
-## 2        5      0.3396226 2016-03-11 00:05:00
-## 3       10      0.1320755 2016-03-11 00:10:00
-## 4       15      0.1509434 2016-03-11 00:15:00
-## 5       20      0.0754717 2016-03-11 00:20:00
-## 6       25      2.0943396 2016-03-11 00:25:00
+## 1        0      1.7169811 2016-03-15 00:00:00
+## 2        5      0.3396226 2016-03-15 00:05:00
+## 3       10      0.1320755 2016-03-15 00:10:00
+## 4       15      0.1509434 2016-03-15 00:15:00
+## 5       20      0.0754717 2016-03-15 00:20:00
+## 6       25      2.0943396 2016-03-15 00:25:00
 ```
 
 I now plot the average number of steps walked per time interval during a day.
@@ -205,9 +207,9 @@ I then replicate the same analysis as above to compute mean and median of the to
 ```r
 new_indata_converted <- tbl_df(new_indata)
 new_group_by_date <- group_by(new_indata_converted, date)
-new_tot_steps_day <- summarise(new_group_by_date, sum(steps))
-new_mean_daily_steps <- mean(new_tot_steps_day$`sum(steps)`)
-new_median_daily_steps <- median(new_tot_steps_day$`sum(steps)`)
+new_tot_steps_day <- summarise(new_group_by_date, sum = sum(steps))
+new_mean_daily_steps <- mean(new_tot_steps_day$sum)
+new_median_daily_steps <- median(new_tot_steps_day$sum)
 print(new_mean_daily_steps)
 ```
 
@@ -227,11 +229,11 @@ They do not change dramatically. This is confirmed by the plot below, showing th
 
 
 ```r
-ggplot(data=new_tot_steps_day, aes(`sum(steps)`)) + 
-  geom_histogram(breaks=seq(min(new_tot_steps_day$`sum(steps)`),max(new_tot_steps_day$`sum(steps)`), by=500),
+ggplot(data=new_tot_steps_day, aes(sum)) + 
+  geom_histogram(breaks=seq(min(new_tot_steps_day$sum), max(new_tot_steps_day$sum), by=500),
                  fill = 'light green',
                  col = 'green') + 
-  geom_histogram(data = tot_steps_day, breaks=seq(min(tot_steps_day$`sum(steps)`, na.rm = TRUE),max(tot_steps_day$`sum(steps)`, na.rm=TRUE), by=500),
+  geom_histogram(data = tot_steps_day, breaks=seq(min(tot_steps_day$sum, na.rm = TRUE),max(tot_steps_day$sum, na.rm=TRUE), by=500),
                  fill = 'blue',
                  alpha = 0.4) +
   labs(title = 'Distribution of the total number of daily steps',

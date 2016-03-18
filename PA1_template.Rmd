@@ -31,9 +31,9 @@ indata_converted <- tbl_df(indata)
 I use the dplyr's functions group_by() and summarise() to sum all steps taken each day. I then take the mean and median by ignoring NA values.
 ```{r, echo=TRUE, eval=TRUE, message=FALSE, warning=FALSE}
 group_by_date <- group_by(indata_converted, date)
-tot_steps_day <- summarise(group_by_date, sum(steps))
-mean_daily_steps <- mean(tot_steps_day$`sum(steps)`, na.rm=TRUE)
-median_daily_steps <- median(tot_steps_day$`sum(steps)`, na.rm=TRUE)
+tot_steps_day <- summarise(group_by_date, sum = sum(steps, na.rm=TRUE))
+mean_daily_steps <- mean(tot_steps_day$sum, na.rm=TRUE)
+median_daily_steps <- median(tot_steps_day$sum, na.rm=TRUE)
 ```
 Here are the values:
 ```{r, echo=TRUE, eval=TRUE, message=FALSE, warning=FALSE}
@@ -44,8 +44,8 @@ print(median_daily_steps)
 I now plot the overall distribution in the form of an histogram. This gives an idea of how often the person has walked a given number of steps.
 ```{r, echo=TRUE, eval=TRUE, message=FALSE, warning=FALSE}
 library(ggplot2)
-ggplot(data=tot_steps_day, aes(`sum(steps)`, na.rm=TRUE)) + 
-  geom_histogram(breaks=seq(min(tot_steps_day$`sum(steps)`, na.rm = TRUE),max(tot_steps_day$`sum(steps)`, na.rm=TRUE), by=500),
+ggplot(data=tot_steps_day, aes(sum, na.rm=TRUE)) + 
+  geom_histogram(breaks=seq(min(tot_steps_day$sum, na.rm = TRUE),max(tot_steps_day$sum, na.rm=TRUE), by=500),
                  fill = 'light blue',
                  col = 'blue') +
   labs(title = 'Distribution of the total number of daily steps',
@@ -53,7 +53,8 @@ ggplot(data=tot_steps_day, aes(`sum(steps)`, na.rm=TRUE)) +
        y = "Number of days") 
 ggsave("histogram_no_nas.pdf")
 ```
-The plot shows that the distribution is not too distant from a gaussian, which was already hinted at by the fact that the mean and median values are very similar.
+The plot shows that the distribution is not too distant from a gaussian.
+# which was already hinted at by the fact that the mean and median values are very similar. THIS IS NOT TRUE ANYMORE AFTER MEAN AND MEDIAN VALUES HAVE BEEN CORRECTED
 
 ## What is the average daily activity pattern?
 ```{r, echo=FALSE, eval=FALSE, message=FALSE, warning=FALSE}
@@ -145,9 +146,9 @@ I then replicate the same analysis as above to compute mean and median of the to
 ```{r, echo=TRUE, eval=TRUE, message=FALSE, warning=FALSE}
 new_indata_converted <- tbl_df(new_indata)
 new_group_by_date <- group_by(new_indata_converted, date)
-new_tot_steps_day <- summarise(new_group_by_date, sum(steps))
-new_mean_daily_steps <- mean(new_tot_steps_day$`sum(steps)`)
-new_median_daily_steps <- median(new_tot_steps_day$`sum(steps)`)
+new_tot_steps_day <- summarise(new_group_by_date, sum = sum(steps))
+new_mean_daily_steps <- mean(new_tot_steps_day$sum)
+new_median_daily_steps <- median(new_tot_steps_day$sum)
 print(new_mean_daily_steps)
 print(new_median_daily_steps)
 ```
@@ -155,11 +156,11 @@ print(new_median_daily_steps)
 They do not change dramatically. This is confirmed by the plot below, showing the new histogram (in green), plotted together with the previous one (in blue). This is not surprising as the treatment for NAs has strenghtened the mean behaviour.
 
 ```{r, echo=TRUE, eval=TRUE, message=FALSE, warning=FALSE}
-ggplot(data=new_tot_steps_day, aes(`sum(steps)`)) + 
-  geom_histogram(breaks=seq(min(new_tot_steps_day$`sum(steps)`),max(new_tot_steps_day$`sum(steps)`), by=500),
+ggplot(data=new_tot_steps_day, aes(sum)) + 
+  geom_histogram(breaks=seq(min(new_tot_steps_day$sum), max(new_tot_steps_day$sum), by=500),
                  fill = 'light green',
                  col = 'green') + 
-  geom_histogram(data = tot_steps_day, breaks=seq(min(tot_steps_day$`sum(steps)`, na.rm = TRUE),max(tot_steps_day$`sum(steps)`, na.rm=TRUE), by=500),
+  geom_histogram(data = tot_steps_day, breaks=seq(min(tot_steps_day$sum, na.rm = TRUE),max(tot_steps_day$sum, na.rm=TRUE), by=500),
                  fill = 'blue',
                  alpha = 0.4) +
   labs(title = 'Distribution of the total number of daily steps',
